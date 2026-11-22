@@ -1,0 +1,17 @@
+{
+  "name": "Stoisches Journal",
+  "short_name": "Journal",
+  "description": "Morgen- und Abendreflexion nach den Stoikern.",
+  "lang": "de",
+  "start_url": "./#heute",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1b1a17",
+  "theme_color": "#1b1a17",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
