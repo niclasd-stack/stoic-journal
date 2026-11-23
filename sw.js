@@ -1,6 +1,6 @@
 // Service Worker: macht die App offline nutzbar.
 // Bei Änderungen an den Dateien VERSION erhöhen, damit die Geräte die neue Fassung laden.
-const VERSION = 'v4';
+const VERSION = 'v5';
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = 'runtime-v1';
 
@@ -30,7 +30,8 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     for (const key of await caches.keys()) {
-      if (key !== SHELL && key !== RUNTIME) await caches.delete(key);
+      // Nur eigene Caches aufräumen: Askesis (Caches mit „fit-“) liegt auf derselben Origin.
+      if ((key.startsWith('shell-') || key.startsWith('runtime-')) && key !== SHELL && key !== RUNTIME) await caches.delete(key);
     }
     await self.clients.claim();
   })());
