@@ -16,7 +16,7 @@ Danach http://localhost:8000 öffnen. Solange `js/config.js` leer ist, läuft di
 
 ### 1. Supabase (Datenbank und Login)
 1. Auf https://supabase.com ein Konto anlegen und mit **New project** ein Projekt erstellen. Eine Region in der EU wählen, z. B. Frankfurt.
-2. Links **SQL Editor** öffnen → **New query**, den Inhalt von `supabase/schema.sql` einfügen und **Run** klicken.
+2. Links **SQL Editor** öffnen → **New query**, den Inhalt von `supabase/schema.sql` einfügen und **Run** klicken. Danach genauso `supabase/notes.sql` ausführen (Tabelle für die freien Gedanken).
 3. Unter **Project Settings → API** die **Project URL** und den **anon public**-Key kopieren und in `js/config.js` eintragen.
 4. Optional: Unter **Authentication → Sign In / Providers → Email** die Option „Confirm email“ ausschalten. Dann kannst du dich sofort nach der Registrierung anmelden.
 

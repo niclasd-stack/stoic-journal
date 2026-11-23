@@ -1,6 +1,6 @@
 // Lokaler Speicher (IndexedDB). Alles wird zuerst hier geschrieben, dann synchronisiert.
 const DB_NAME = 'stoic-journal';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbPromise;
 
 function open() {
@@ -11,6 +11,7 @@ function open() {
         const db = req.result;
         if (!db.objectStoreNames.contains('entries')) db.createObjectStore('entries', { keyPath: 'key' });
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
+        if (!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath: 'id' });
       };
       req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
@@ -32,15 +33,21 @@ async function run(store, mode, fn) {
 
 export const keyOf = (date, kind) => `${date}|${kind}`;
 
+// Morgen-/Abendreflexion
 export const getEntry = (date, kind) => run('entries', 'readonly', s => s.get(keyOf(date, kind)));
 export const putEntry = entry => run('entries', 'readwrite', s => s.put({ ...entry, key: keyOf(entry.entry_date, entry.kind) }));
 export const allEntries = () => run('entries', 'readonly', s => s.getAll());
 export const dirtyEntries = async () => (await allEntries()).filter(e => e.dirty);
 
+// Freie Gedanken (beliebig viele pro Tag; gelöschte bleiben als deleted:true für den Sync)
+export const getNote = id => run('notes', 'readonly', s => s.get(id));
+export const putNote = note => run('notes', 'readwrite', s => s.put(note));
+export const allNotes = () => run('notes', 'readonly', s => s.getAll());
+export const dirtyNotes = async () => (await allNotes()).filter(n => n.dirty);
+
 export const getMeta = key => run('meta', 'readonly', s => s.get(key));
 export const setMeta = (key, value) => run('meta', 'readwrite', s => s.put(value, key));
 
 export async function clearAll() {
-  await run('entries', 'readwrite', s => s.clear());
-  await run('meta', 'readwrite', s => s.clear());
+  for (const store of ['entries', 'notes', 'meta']) await run(store, 'readwrite', s => s.clear());
 }

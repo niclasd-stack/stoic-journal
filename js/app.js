@@ -79,10 +79,11 @@ async function onSignedIn(user) {
   state.user = user;
   state.sync = new Sync(state.client, user.id, {
     onStatus: setStatus,
-    onRemoteChange: dates => {
+    onRemoteChange: changed => {
       const route = location.hash.slice(1) || 'heute';
-      const typing = document.activeElement?.tagName === 'TEXTAREA';
-      if (route === 'heute' && dates.has(currentDate()) && !typing) renderToday();
+      const typing = ['TEXTAREA', 'INPUT'].includes(document.activeElement?.tagName);
+      if (route === 'heute' && changed.entries.has(currentDate()) && !typing) renderToday();
+      else if (route === 'gedanken' && changed.notes && !typing && !state.editingNote) renderNotes();
       else if (route === 'statistik') renderStats();
     },
   });
@@ -113,7 +114,9 @@ function route() {
   for (const a of $tabs.querySelectorAll('a')) {
     if (a.dataset.tab === r) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
-  if (r === 'statistik') renderStats();
+  state.editingNote = null;
+  if (r === 'gedanken') renderNotes();
+  else if (r === 'statistik') renderStats();
   else if (r === 'einstellungen') renderSettings();
   else renderToday();
   window.scrollTo(0, 0);
@@ -293,6 +296,119 @@ async function save(date, kind, { answers, mood }, card) {
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSaves(); });
 window.addEventListener('pagehide', flushSaves);
 
+// ---------- Gedanken (freies Tagebuch) ----------
+const DRAFT_KEY = 'stoic-journal-draft';
+const readDraft = () => { try { return localStorage.getItem(DRAFT_KEY) || ''; } catch { return ''; } };
+const writeDraft = v => { try { v ? localStorage.setItem(DRAFT_KEY, v) : localStorage.removeItem(DRAFT_KEY); } catch { /* egal */ } };
+const fmtTime = iso => new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+function fmtDay(s) {
+  const t = todayStr();
+  const opts = { weekday: 'long', day: 'numeric', month: 'long' };
+  if (s.slice(0, 4) !== t.slice(0, 4)) opts.year = 'numeric';
+  const label = parseYmd(s).toLocaleDateString('de-DE', opts);
+  if (s === t) return `Heute · ${label}`;
+  if (s === addDays(t, -1)) return `Gestern · ${label}`;
+  return label;
+}
+
+async function renderNotes() {
+  flushSaves();
+  const today = todayStr();
+  const notes = (await db.allNotes()).filter(n => !n.deleted)
+    .sort((a, b) => b.entry_date.localeCompare(a.entry_date) || b.created_at.localeCompare(a.created_at));
+  const groups = new Map();
+  for (const n of notes) {
+    if (!groups.has(n.entry_date)) groups.set(n.entry_date, []);
+    groups.get(n.entry_date).push(n);
+  }
+  const list = [...groups].map(([date, items]) => `
+    <section class="note-day">
+      <h2 class="note-date">${esc(fmtDay(date))}</h2>
+      ${items.map(n => `
+        <article class="note" data-id="${esc(n.id)}">
+          <div class="note-meta"><span>${esc(fmtTime(n.created_at))}</span>
+            <span class="note-actions">
+              <button type="button" class="link" data-act="edit">Bearbeiten</button>
+              <button type="button" class="link danger" data-act="delete">Löschen</button>
+            </span>
+          </div>
+          <div class="note-body">${esc(n.body)}</div>
+        </article>`).join('')}
+    </section>`).join('');
+
+  $view.innerHTML = `
+    <h1>Gedanken</h1>
+    <p class="sub">Freies Tagebuch – alles, was dich beschäftigt.</p>
+    <form class="panel composer" id="composer">
+      <textarea id="note-text" rows="5" placeholder="Was geht dir durch den Kopf?"></textarea>
+      <div class="composer-row">
+        <label class="date-field">Datum <input type="date" id="note-date" value="${today}" max="${today}"></label>
+        <button class="btn" type="submit">Speichern</button>
+      </div>
+    </form>
+    ${list || '<p class="empty">Noch keine Gedanken. Schreib oben deinen ersten Eintrag.</p>'}`;
+
+  const text = document.getElementById('note-text');
+  text.value = readDraft();
+  text.addEventListener('input', () => writeDraft(text.value));
+
+  document.getElementById('composer').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    const body = text.value.trim();
+    if (!body) { text.focus(); return; }
+    const date = document.getElementById('note-date').value || today;
+    const now = new Date().toISOString();
+    await db.putNote({ id: crypto.randomUUID(), entry_date: date, created_at: now, body, deleted: false, updated_at: now, dirty: true });
+    writeDraft('');
+    afterNoteChange();
+  });
+
+  $view.querySelectorAll('.note').forEach(el => el.addEventListener('click', async ev => {
+    const act = ev.target.closest('[data-act]')?.dataset.act;
+    if (!act) return;
+    const note = await db.getNote(el.dataset.id);
+    if (!note) return;
+    if (act === 'delete') {
+      if (!confirm('Diesen Gedanken wirklich löschen?')) return;
+      await db.putNote({ ...note, deleted: true, updated_at: new Date().toISOString(), dirty: true });
+      afterNoteChange();
+    } else if (act === 'edit') {
+      editNote(el, note);
+    }
+  }));
+}
+
+function editNote(el, note) {
+  state.editingNote = note.id;
+  el.innerHTML = `
+    <textarea class="note-edit" rows="5"></textarea>
+    <div class="composer-row">
+      <label class="date-field">Datum <input type="date" value="${note.entry_date}" max="${todayStr()}"></label>
+      <span class="btn-row">
+        <button type="button" class="btn ghost" data-edit="cancel">Abbrechen</button>
+        <button type="button" class="btn" data-edit="save">Speichern</button>
+      </span>
+    </div>`;
+  const ta = el.querySelector('textarea');
+  ta.value = note.body;
+  ta.focus();
+  el.querySelector('[data-edit="cancel"]').onclick = () => { state.editingNote = null; renderNotes(); };
+  el.querySelector('[data-edit="save"]').onclick = async () => {
+    const body = ta.value.trim();
+    if (!body) { ta.focus(); return; }
+    const date = el.querySelector('input[type="date"]').value || note.entry_date;
+    await db.putNote({ ...note, body, entry_date: date, updated_at: new Date().toISOString(), dirty: true });
+    state.editingNote = null;
+    afterNoteChange();
+  };
+}
+
+function afterNoteChange() {
+  if (state.status !== 'local') setStatus('pending');
+  state.sync?.schedule(500);
+  renderNotes();
+}
+
 // ---------- Statistik ----------
 async function renderStats() {
   const s = computeStats(await db.allEntries());
@@ -343,7 +459,7 @@ function moodChart(moods) {
 // ---------- Konto / Einstellungen ----------
 async function renderSettings() {
   const lastSync = await db.getMeta('lastSync');
-  const pending = (await db.dirtyEntries()).length;
+  const pending = (await db.dirtyEntries()).length + (await db.dirtyNotes()).length;
   const fmt = iso => iso ? new Date(iso).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : '–';
   $view.innerHTML = `
     <h1>Konto</h1>
@@ -368,7 +484,9 @@ async function renderSettings() {
   document.getElementById('export').onclick = async () => {
     const entries = (await db.allEntries()).map(({ key, dirty, ...e }) => e)
       .sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.kind.localeCompare(b.kind));
-    const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), entries }, null, 2)], { type: 'application/json' });
+    const notes = (await db.allNotes()).filter(n => !n.deleted).map(({ dirty, deleted, ...n }) => n)
+      .sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.created_at.localeCompare(b.created_at));
+    const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), entries, notes }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `stoisches-journal-${todayStr()}.json`;
@@ -379,7 +497,7 @@ async function renderSettings() {
   if (syncBtn) syncBtn.onclick = async () => { await state.sync?.run(); renderSettings(); };
   const logout = document.getElementById('logout');
   if (logout) logout.onclick = async () => {
-    if ((await db.dirtyEntries()).length && !confirm('Es gibt noch nicht synchronisierte Änderungen. Trotzdem abmelden? Sie gehen dann verloren.')) return;
+    if ((await db.dirtyEntries()).length + (await db.dirtyNotes()).length && !confirm('Es gibt noch nicht synchronisierte Änderungen. Trotzdem abmelden? Sie gehen dann verloren.')) return;
     await db.clearAll();
     await auth.signOut(state.client);
     location.hash = '';
