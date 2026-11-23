@@ -60,7 +60,11 @@ button, input, textarea { font: inherit; color: inherit; }
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
 }
-.brand { font-family: var(--serif); font-size: 1.3rem; font-weight: 600; letter-spacing: .02em; }
+.brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--serif); font-size: 1.35rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+}
+.brand svg { width: 22px; height: 22px; fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
 .sync {
   border: 1px solid var(--line); background: var(--surface);
   border-radius: 999px; padding: 4px 10px; font-size: .78rem; color: var(--ink-soft);

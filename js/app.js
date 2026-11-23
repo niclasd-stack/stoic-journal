@@ -60,7 +60,7 @@ async function boot() {
     // Supabase-Bibliothek nicht geladen (z. B. erster Start offline)
     const lastUser = await db.getMeta('userId');
     if (lastUser) { state.user = { id: lastUser, email: await db.getMeta('email') }; setStatus('offline'); return startApp(); }
-    $view.innerHTML = `<div class="auth"><h1>Stoisches Journal</h1><p class="sub">Für den ersten Start wird eine Internetverbindung gebraucht.</p></div>`;
+    $view.innerHTML = `<div class="auth"><h1>Prosoche</h1><p class="sub">Für den ersten Start wird eine Internetverbindung gebraucht.</p></div>`;
     return;
   }
   state.client.auth.onAuthStateChange((event) => {
@@ -133,8 +133,8 @@ function renderLogin() {
   $sync.textContent = '';
   $view.innerHTML = `
     <div class="auth">
-      <h1>Stoisches Journal</h1>
-      <p class="sub">Morgens vorbereiten, abends prüfen.</p>
+      <h1>Prosoche</h1>
+      <p class="sub">Stoisches Journal · Morgens vorbereiten, abends prüfen.</p>
       <form id="login" novalidate>
         <input type="email" name="email" placeholder="E-Mail" autocomplete="email" required>
         <input type="password" name="password" placeholder="Passwort (mind. 6 Zeichen)" autocomplete="current-password" required minlength="6">
@@ -496,7 +496,7 @@ async function renderSettings() {
     const blob = new Blob([JSON.stringify({ exported_at: new Date().toISOString(), entries, notes }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `stoisches-journal-${todayStr()}.json`;
+    a.download = `prosoche-${todayStr()}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };

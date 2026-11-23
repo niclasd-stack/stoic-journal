@@ -1,4 +1,6 @@
-# Stoisches Journal
+# Prosoche – Stoisches Journal
+
+*Prosoche* (griechisch: Aufmerksamkeit) ist die stoische Grundhaltung, ständig auf das eigene Denken und Handeln zu achten.
 
 Eine installierbare Web-App (PWA) für Handy und Computer. Morgens bereitest du den Tag vor, abends prüfst du ihn. Dazu gibt es jeden Tag ein Zitat, eine Serie (Streak) und eine Statistik. Die Einträge werden über Supabase synchronisiert.
 
