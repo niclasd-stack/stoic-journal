@@ -51,6 +51,7 @@ export class Sync {
     this.onStatus('syncing');
     const changed = { entries: new Set(), notes: false };
     let failed = false;
+    const errors = [];
     // Jede Tabelle für sich, damit ein Fehler bei einer die andere nicht blockiert.
     for (const name of Object.keys(TABLES)) {
       try {
@@ -60,11 +61,13 @@ export class Sync {
         await this.push(name);
       } catch (err) {
         failed = true;
+        errors.push(`${name}: ${err?.message || err?.code || String(err)}`);
         console.warn(`Sync (${name}) fehlgeschlagen`, err);
       }
     }
     try {
       if (!failed) await db.setMeta('lastSync', new Date().toISOString());
+      await db.setMeta('lastError', failed ? { at: new Date().toISOString(), msg: errors.join(' · ') } : null);
       const pending = (await db.dirtyEntries()).length + (await db.dirtyNotes()).length;
       this.onStatus(failed ? (navigator.onLine ? 'error' : 'offline') : pending ? 'pending' : 'synced');
       if (changed.entries.size || changed.notes) this.onRemoteChange(changed);

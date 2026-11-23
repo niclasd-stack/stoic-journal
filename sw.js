@@ -1,6 +1,6 @@
 // Service Worker: macht die App offline nutzbar.
 // Bei Änderungen an den Dateien VERSION erhöhen, damit die Geräte die neue Fassung laden.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = 'runtime-v1';
 
@@ -22,7 +22,9 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));
+  event.waitUntil(caches.open(SHELL)
+    .then(c => c.addAll(SHELL_FILES.map(u => new Request(u, { cache: 'no-cache' }))))
+    .then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', event => {
@@ -57,7 +59,8 @@ self.addEventListener('fetch', event => {
   // Eigene Dateien: Netz zuerst (immer aktuell), offline aus dem Cache
   event.respondWith((async () => {
     try {
-      const res = await fetch(req);
+      // no-cache: immer beim Server nachfragen, damit nie alte und neue Dateien gemischt werden
+      const res = await fetch(req, { cache: 'no-cache' });
       if (res.ok) {
         const copy = res.clone();
         caches.open(SHELL).then(c => c.put(req, copy));

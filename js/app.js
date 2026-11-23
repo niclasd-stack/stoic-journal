@@ -43,6 +43,11 @@ function setStatus(s) {
 }
 $sync.addEventListener('click', () => state.sync?.run());
 
+// Ältere Fassung der App blockiert das Datenbank-Update
+window.addEventListener('db-blocked', () => {
+  $view.innerHTML = `<div class="auth"><h1>Update wartet</h1><p class="sub">Die App ist noch an anderer Stelle geöffnet (z. B. installierte App und Browser-Tab gleichzeitig). Bitte alle anderen Fenster der App schließen – danach geht es hier automatisch weiter.</p></div>`;
+});
+
 // ---------- Start ----------
 async function boot() {
   registerServiceWorker();
@@ -459,6 +464,7 @@ function moodChart(moods) {
 // ---------- Konto / Einstellungen ----------
 async function renderSettings() {
   const lastSync = await db.getMeta('lastSync');
+  const lastError = await db.getMeta('lastError');
   const pending = (await db.dirtyEntries()).length + (await db.dirtyNotes()).length;
   const fmt = iso => iso ? new Date(iso).toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }) : '–';
   $view.innerHTML = `
@@ -468,7 +474,8 @@ async function renderSettings() {
         ? `<p class="note">Lokaler Modus: Supabase ist noch nicht eingerichtet (js/config.js). Einträge bleiben nur auf diesem Gerät.</p>`
         : `<div class="kv"><span>Angemeldet als</span><span>${esc(state.user?.email || '')}</span></div>
            <div class="kv"><span>Letzter Sync</span><span>${fmt(lastSync)}</span></div>
-           <div class="kv"><span>Ausstehende Änderungen</span><span>${pending}</span></div>`}
+           <div class="kv"><span>Ausstehende Änderungen</span><span>${pending}</span></div>
+           ${lastError ? `<div class="kv"><span>Letzter Fehler</span><span>${fmt(lastError.at)}: ${esc(lastError.msg)}</span></div>` : ''}`}
     </section>
     <div class="btn-row">
       ${LOCAL_MODE ? '' : '<button class="btn" id="sync-now">Jetzt synchronisieren</button>'}

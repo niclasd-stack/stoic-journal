@@ -13,8 +13,15 @@ function open() {
         if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
         if (!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath: 'id' });
       };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onsuccess = () => {
+        const db = req.result;
+        // Eine neuere Fassung der App (anderer Tab) will die Datenbank aktualisieren → Platz machen.
+        db.onversionchange = () => { db.close(); dbPromise = null; location.reload(); };
+        resolve(db);
+      };
+      req.onerror = () => { dbPromise = null; reject(req.error); };
+      // Eine ältere Fassung der App ist noch offen und blockiert das Update.
+      req.onblocked = () => window.dispatchEvent(new Event('db-blocked'));
     });
   }
   return dbPromise;

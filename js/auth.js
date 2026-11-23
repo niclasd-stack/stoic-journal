@@ -12,10 +12,19 @@ export function translateError(err) {
   return MESSAGES[err.message] || err.message || 'Unbekannter Fehler.';
 }
 
+// Anfragen nach 20 s abbrechen, damit ein hängendes Mobilnetz den Sync nicht dauerhaft blockiert.
+function fetchWithTimeout(input, init = {}) {
+  const timeout = AbortSignal.timeout ? AbortSignal.timeout(20000) : null;
+  let signal = init.signal || timeout;
+  if (init.signal && timeout && AbortSignal.any) signal = AbortSignal.any([init.signal, timeout]);
+  return fetch(input, { ...init, signal });
+}
+
 export function createClient(url, key) {
   if (!window.supabase?.createClient) return null;
   return window.supabase.createClient(url, key, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    global: { fetch: fetchWithTimeout },
   });
 }
 
