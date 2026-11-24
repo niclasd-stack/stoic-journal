@@ -15,6 +15,7 @@ const MORNING = [
 ];
 const EVENING = [
   { id: 'good', label: 'Was ist mir heute gut gelungen?' },
+  { id: 'joy', label: 'Was hat mich heute gefreut?' },
   { id: 'fell_short', label: 'Wo bin ich hinter meinen Grundsätzen zurückgeblieben?' },
   { id: 'better', label: 'Was mache ich morgen besser?' },
   { id: 'mood', type: 'mood', label: 'Wie gefasst war ich heute?', hint: '1 = aufgewühlt · 5 = gelassen' },

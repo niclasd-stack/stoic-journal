@@ -1,6 +1,6 @@
 // Service Worker: macht die App offline nutzbar.
 // Bei Änderungen an den Dateien VERSION erhöhen, damit die Geräte die neue Fassung laden.
-const VERSION = 'v6';
+const VERSION = 'v7';
 const SHELL = `shell-${VERSION}`;
 const RUNTIME = 'runtime-v1';
 
